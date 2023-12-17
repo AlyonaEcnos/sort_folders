@@ -12,11 +12,11 @@ video = ".avi .mp4 .mov .mkv".split()
 archives = ".zip .gz .tar".split()
 
 dict_suffixes = {
-    'documents' : documents,
-    'images' : images,
-    'audio' : audio,
-    'video' : video,
-    'archives' : archives,
+    'documents': [ext.lower() for ext in documents],
+    'images': [ext.lower() for ext in images],
+    'audio': [ext.lower() for ext in audio],
+    'video': [ext.lower() for ext in video],
+    'archives': [ext.lower() for ext in archives],
 }
 
 dict_suffixes_reverse = {}
@@ -67,19 +67,31 @@ def unpack(archive_path: Path, path_to_unpack):
 
 def move_file(root_path: Path, path_file: Path):
     name = normalize(path_file.stem)
-    suff = path_file.suffix
-    category = dict_suffixes_reverse.get(suff, 'others')
+    suff = path_file.suffix.lower()
     
-    new_path_dir = root_path/category
+    if path_file.is_file():        
+        category = dict_suffixes_reverse.get(suff, 'others')
+        new_path_dir = root_path / category
 
-    if not new_path_dir.exists():
-        new_path_dir.mkdir()
-    
-    new_path_file = new_path_dir / (name + suff)
-    path_file.replace(new_path_file)
+        if not new_path_dir.exists():
+            new_path_dir.mkdir()
 
-    if category == 'archives':
-        unpack(new_path_file, new_path_dir)
+        new_path_file = new_path_dir / (name + suff)
+        path_file.replace(new_path_file)
+
+        if category == 'archives':
+            unpack(new_path_file, new_path_dir)
+
+    elif path_file.is_dir():        
+        new_path_dir = root_path / 'others'
+        if not new_path_dir.exists():
+            new_path_dir.mkdir()
+
+        new_path_dir = new_path_dir / name
+        path_file.replace(new_path_dir)
+
+    else:
+        return
 
 def sort_folder(root_path: Path, path: Path):  
     all_files = []
