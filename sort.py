@@ -20,9 +20,12 @@ dict_suffixes = {
 }
 
 dict_suffixes_reverse = {}
-for categ, suffs in dict_suffixes.items():
-    dict_suffixes_reverse.update(dict.fromkeys(suffs, categ))
+all_files = []
+known_extensions = set()
+unknown_extensions = set()
 
+for categ, suffs in dict_suffixes.items():
+    dict_suffixes_reverse.update(dict.fromkeys(suffs, categ))    
 
 def transliterate_cyrillic_to_latin(text):
     translit_dict = {
@@ -67,30 +70,36 @@ def unpack(archive_path: Path, path_to_unpack):
 
 def move_file(root_path: Path, path_file: Path):
     name = normalize(path_file.stem)
-    suff = path_file.suffix.lower()
+    suff = path_file.suffix.lower() #
     
     category = dict_suffixes_reverse.get(suff, 'others')
 
-    new_path_dir = root_path/category
+    new_path_dir = root_path / category
 
     if not new_path_dir.exists():
         new_path_dir.mkdir()
 
-    new_path_file = new_path_dir / (name + suff)
+    
+    original_suffix = path_file.suffix    
+    new_path_file = new_path_dir / (name + original_suffix)
     path_file.replace(new_path_file)
 
     if category == 'archives':
         unpack(new_path_file, new_path_dir)
 
-def sort_folder(root_path: Path, path: Path):  
-    all_files = []
-    known_extensions = set()
-    unknown_extensions = set()
+def sort_folder(root_path: Path, path: Path):      
 
     for item in path.iterdir():
         if item.is_file():
             all_files.append(str(item.name))
             _, extension = os.path.splitext(item.name)
+            extension_lower = extension.lower()
+
+            if extension_lower in dict_suffixes_reverse:
+                known_extensions.add(extension_lower)
+            else:
+                unknown_extensions.add(extension)
+
             if extension in dict_suffixes_reverse:
                 known_extensions.add(extension)
             else:
@@ -98,10 +107,9 @@ def sort_folder(root_path: Path, path: Path):
 
             move_file(root_path, item)
 
-        if item.is_dir():
-            if not(item.parts[-1] in dict_suffixes and item.parts[:-1] == root_path.parts):
-                sort_folder(root_path, item)
-                item.rmdir()
+        if item.is_dir() and not item.name in dict_suffixes.keys():
+            sort_folder(root_path, item)
+            item.rmdir()
             
 
     write_list_to_file(root_path / 'all_files.txt', all_files)
